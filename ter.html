@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Procedural Terrain Wallpaper</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000; /* Fallback background */
+    }
+
+    canvas {
+      display: block; /* Removes default canvas bottom margin */
+    }
+  </style>
+</head>
+<body>
+  <canvas id="terrainCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('terrainCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Configuration
+    const WIDTH = window.innerWidth;
+    const HEIGHT = window.innerHeight;
+    const DETAIL = 0.01; // Adjust for more/less detail. Lower = more detail
+    const AMPLITUDE = HEIGHT / 4; // Height of the mountains
+    const PERSPECTIVE = 0.7; // Adjust for depth perspective.  Closer to 1 is less perspective.
+    const COLOR_GRADIENT = [
+      { offset: 0.0, color: "#4A3B2A" }, // Deep Ground
+      { offset: 0.2, color: "#6E543B" }, // Ground
+      { offset: 0.4, color: "#8A7055" }, // Ground lighter
+      { offset: 0.6, color: "#7D7468" }, // Low Rocks
+      { offset: 0.8, color: "#A0978A" }, // High Rocks
+      { offset: 1.0, color: "#FFFFFF" }  // Snow Peaks
+    ];
+    const MOON_COLOR = "rgba(255, 255, 230, 0.6)";
+    const MOON_RADIUS = Math.min(WIDTH, HEIGHT) / 8;
+    const MOON_X = WIDTH * 0.9;
+    const MOON_Y = HEIGHT * 0.15;
+
+    // Perlin Noise function (Simplified)
+    function noise(x) {
+      x = (x << 13) ^ x;
+      return (1.0 - ((x * (x * x * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0);
+    }
+
+    // Smoothed Noise
+    function smoothedNoise(x) {
+      return noise(x) / 2  + noise(x - 1) / 4 + noise(x + 1) / 4;
+    }
+
+    // Interpolated Noise
+    function interpolatedNoise(x) {
+      const integer_X = Math.floor(x);
+      const fractional_X = x - integer_X;
+
+      const v1 = smoothedNoise(integer_X);
+      const v2 = smoothedNoise(integer_X + 1);
+
+      return cosine_interpolate(v1, v2, fractional_X);
+    }
+
+    function cosine_interpolate(a, b, x) {
+      const ft = x * Math.PI;
+      const f = (1 - Math.cos(ft)) * 0.5;
+      return a * (1 - f) + b * f;
+    }
+
+
+    // Terrain generation function
+    function generateTerrain() {
+      ctx.clearRect(0, 0, WIDTH, HEIGHT); // Clear the canvas
+
+      // Create the gradient for the terrain colors
+      const gradient = ctx.createLinearGradient(0, HEIGHT * 0.5, 0, HEIGHT);
+      COLOR_GRADIENT.forEach(stop => {
+        gradient.addColorStop(stop.offset, stop.color);
+      });
+
+
+      // Draw the terrain
+      ctx.beginPath();
+      ctx.moveTo(0, HEIGHT); // Start at the bottom-left
+
+      for (let x = 0; x <= WIDTH; x++) {
+        const y = HEIGHT - AMPLITUDE * interpolatedNoise(x * DETAIL) * PERSPECTIVE;
+        ctx.lineTo(x, y);
+      }
+
+      ctx.lineTo(WIDTH, HEIGHT); // Bottom-right
+      ctx.closePath();
+
+      ctx.fillStyle = gradient;  // Use the gradient
+      ctx.fill();
+
+
+      // Draw the moon (optional)
+      ctx.beginPath();
+      ctx.arc(MOON_X, MOON_Y, MOON_RADIUS, 0, 2 * Math.PI);
+      ctx.fillStyle = MOON_COLOR;
+      ctx.fill();
+    }
+
+
+    // Resize canvas to fill the screen
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      generateTerrain(); // Regenerate on resize.  Optional.
+    }
+
+
+    // Initialization
+    function init() {
+      canvas.width = WIDTH;
+      canvas.height = HEIGHT;
+      generateTerrain();
+
+      // Handle window resizing (important for mobile)
+      window.addEventListener('resize', resizeCanvas);
+    }
+
+    init();
+  </script>
+</body>
+</html>
+
